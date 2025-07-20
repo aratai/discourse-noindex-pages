@@ -1,33 +1,44 @@
 # frozen_string_literal: true
 
-# name: discourse-plugin-name
-# about: Adds noindex to topic subpages and specific post links
-# meta_topic_id: TODO
-# version: 0.0.1
-# authors: Discourse + Tvoj Nick
-# url: TODO
-# required_version: 2.7.0
+# name: discourse-noindex-pages
+# about: Adds noindex and canonical fix for topic subpages and specific post links
+# version: 0.1
+# authors: Tvoj Nick
 
-enabled_site_setting :plugin_name_enabled
-
-module ::MyPluginModule
-  PLUGIN_NAME = "discourse-plugin-name"
-end
-
-require_relative "lib/my_plugin_module/engine"
+enabled_site_setting :noindex_pages_enabled
 
 after_initialize do
 
-add_to_serializer(:topic_view, :extra_noindex) do
-  url = scope.request.fullpath
-  has_post_number = url.match(/\/\d+\/\d+$/)
-  is_paged = object.instance_variable_get(:@params)[:page].to_i > 1
+  add_to_serializer(:topic_view, :extra_noindex) do
+    if scope.is_a?(Guardian) && scope.request.format == :html
+      url = scope.request.fullpath
+      has_post_number = url.match(/\/\d+\/\d+$/)
+      is_paged = object.instance_variable_get(:@params)[:page].to_i > 1
 
-  if is_paged || has_post_number
-    '<meta name="robots" content="noindex, follow">'
-  else
-    ''
+      if is_paged || has_post_number
+        '<meta name="robots" content="noindex, follow">'
+      else
+        ''
+      end
+    else
+      ''
+    end
   end
-end
+
+  add_to_serializer(:topic_view, :canonical_url) do
+    if scope.is_a?(Guardian) && scope.request.format == :html
+      params = object.instance_variable_get(:@params)
+      has_post_number = scope.request.fullpath.match(/\/\d+\/\d+$/)
+      is_paged = params[:page].to_i > 1
+
+      if is_paged || has_post_number
+        object.topic.relative_url
+      else
+        object.canonical_url
+      end
+    else
+      object.canonical_url
+    end
+  end
 
 end
