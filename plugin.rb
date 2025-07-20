@@ -10,7 +10,7 @@ enabled_site_setting :noindex_pages_enabled
 after_initialize do
 
   add_to_serializer(:topic_view, :extra_noindex) do
-    if scope.is_a?(Guardian) && scope.request.format == :html
+    if scope.is_a?(Guardian) && scope.request.format == :html && object.topic
       url = scope.request.fullpath
       has_post_number = url.match(/\/\d+\/\d+$/)
       is_paged = object.instance_variable_get(:@params)[:page].to_i > 1
@@ -26,7 +26,7 @@ after_initialize do
   end
 
   add_to_serializer(:topic_view, :canonical_url) do
-    if scope.is_a?(Guardian) && scope.request.format == :html
+    if scope.is_a?(Guardian) && scope.request.format == :html && object.topic
       params = object.instance_variable_get(:@params)
       has_post_number = scope.request.fullpath.match(/\/\d+\/\d+$/)
       is_paged = params[:page].to_i > 1
