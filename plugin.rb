@@ -18,22 +18,16 @@ require_relative "lib/my_plugin_module/engine"
 
 after_initialize do
 
-  add_to_class(:topic_view, :add_extra_head) do |controller|
-    noindex_needed = false
+add_to_serializer(:topic_view, :extra_noindex) do
+  url = scope.request.fullpath
+  has_post_number = url.match(/\/\d+\/\d+$/)
+  is_paged = object.instance_variable_get(:@params)[:page].to_i > 1
 
-    if controller.params[:page].to_i > 1
-      noindex_needed = true
-    end
-
-    if controller.params[:post_number]
-      noindex_needed = true
-    end
-
-    if noindex_needed
-      '<meta name="robots" content="noindex, follow">'
-    else
-      ''
-    end
+  if is_paged || has_post_number
+    '<meta name="robots" content="noindex, follow">'
+  else
+    ''
   end
+end
 
 end
