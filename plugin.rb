@@ -5,8 +5,6 @@
 # version: 0.1
 # authors: Tvoj Nick
 
-enabled_site_setting :noindex_pages_enabled
-
 after_initialize do
 
   add_to_serializer(:topic_view, :extra_noindex) do
