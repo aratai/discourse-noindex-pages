@@ -6,38 +6,43 @@
 # authors: Tvoj Nick
 
 after_initialize do
+  # Helper method to check if we're dealing with HTML request and have a valid topic
+  def should_process?(scope, object)
+    scope.is_a?(Guardian) && 
+    scope.request.format == :html && 
+    object.respond_to?(:topic) && 
+    object.topic
+  end
+
+  # Helper to determine if current page should be noindexed
+  def should_noindex?(scope, object)
+    return false unless should_process?(scope, object)
+
+    url = scope.request.fullpath
+    params = object.instance_variable_get(:@params)
+    
+    has_post_number = url.match?(/\/\d+\/\d+$/)
+    is_paged = params && params[:page].to_i > 1
+    
+    is_paged || has_post_number
+  end
 
   add_to_serializer(:topic_view, :extra_noindex) do
-    if scope.is_a?(Guardian) && scope.request.format == :html && object.respond_to?(:topic) && object.topic
-      url = scope.request.fullpath
-      has_post_number = url.match(/\/\d+\/\d+$/)
-      is_paged = object.instance_variable_get(:@params)[:page].to_i > 1
-
-      if is_paged || has_post_number
-        '<meta name="robots" content="noindex, follow">'
-      else
-        ''
-      end
+    if should_noindex?(scope, object)
+      '<meta name="robots" content="noindex, follow">'
     else
       ''
     end
   end
 
   add_to_serializer(:topic_view, :canonical_url) do
-    if scope.is_a?(Guardian) && scope.request.format == :html && object.respond_to?(:topic) && object.topic
-      params = object.instance_variable_get(:@params)
-      has_post_number = scope.request.fullpath.match(/\/\d+\/\d+$/)
-      is_paged = params[:page].to_i > 1
-
-      if is_paged || has_post_number
-        Discourse.base_url_no_prefix + object.topic.relative_url
-      else
-        Discourse.base_url_no_prefix + object.topic.relative_url
-      end
-    else
-      Discourse.base_url_no_prefix + object.topic.relative_url
-    end
+    return '' unless should_process?(scope, object)
+    
+    base_url = Discourse.base_url_no_prefix
+    topic_url = object.topic.relative_url
+    
+    # Always point canonical to the first page/main topic URL
+    "#{base_url}#{topic_url}"
   end
-
 end
 
