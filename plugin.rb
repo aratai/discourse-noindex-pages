@@ -6,58 +6,46 @@
 # authors: Tvoj Nick
 
 after_initialize do
-  # Pridáme meta tagy do serializéra
-  add_to_serializer(:topic_view, :seo_meta_tags) do
-    return '' unless object.topic
+  TopicsController.class_eval do
+    before_action :set_seo_meta_tags, only: :show
 
-    url = scope.request.fullpath
-    page = scope.request.params[:page].to_i
-    has_post_number = url.match?(/\/\d+\/\d+$/) || scope.request.params[:post_number].present?
+    private
 
-    meta = ""
+    def set_seo_meta_tags
+      return unless @topic_view&.topic
 
-    if page > 1 || has_post_number
-      Rails.logger.info "[SEO Plugin] Adding noindex to: #{url}"
-      meta += '<meta name="robots" content="noindex, follow">'
-    else
-      Rails.logger.info "[SEO Plugin] Noindex not needed for: #{url}"
-    end
-
-    canonical = "#{Discourse.base_url}#{object.topic.relative_url}"
-    Rails.logger.info "[SEO Plugin] Setting canonical: #{canonical}"
-    meta += %Q(<link rel="canonical" href="#{canonical}" />)
-
-    meta
-  end
-
-  # Pridáme meta tagy do hlavičky
-  register_html_builder('server:before-head-close') do |controller|
-    if controller.instance_of?(TopicsController)
-      topic_view = controller.instance_variable_get(:@topic_view)
-      next '' unless topic_view&.topic
-
-      url = controller.request.fullpath
-      page = controller.params[:page].to_i
-      has_post_number = url.match?(/\/\d+\/\d+$/) || controller.params[:post_number].present?
-
-      result = ''
+      url = request.fullpath
+      page = params[:page].to_i
+      has_post_number = url.match?(/\/\d+\/\d+$/) || params[:post_number].present?
 
       if page > 1 || has_post_number
-        Rails.logger.info "[SEO Plugin] Adding noindex meta tag"
-        result += '<meta name="robots" content="noindex, follow">'
+        @meta_tags ||= []
+        @meta_tags << { name: 'robots', content: 'noindex, follow' }
+        response.headers['X-Robots-Tag'] = 'noindex, follow'
       end
 
-      canonical = "#{Discourse.base_url}#{topic_view.topic.relative_url}"
-      result += %Q(<link rel="canonical" href="#{canonical}" />)
-
-      result
-    else
-      ''
+      # Set canonical URL
+      @canonical_url = "#{Discourse.base_url}#{@topic_view.topic.relative_url}"
     end
   end
 
-  # Zabezpečíme, že sa meta tagy dostanú do hlavičky
-  on(:topic_view_serializer_after_init) do |serializer|
-    serializer.include_seo_meta_tags = true
+  # Override the default head template
+  module MetaTagsInHead
+    def discourse_stylesheet_tags
+      result = super
+      if @meta_tags
+        @meta_tags.each do |tag|
+          result << "<meta name='#{tag[:name]}' content='#{tag[:content]}'>\n"
+        end
+      end
+      if @canonical_url
+        result << "<link rel='canonical' href='#{@canonical_url}'>\n"
+      end
+      result.html_safe
+    end
+  end
+
+  ApplicationHelper.module_eval do
+    prepend MetaTagsInHead
   end
 end
