@@ -6,26 +6,33 @@
 # authors: Tvoj Nick
 
 after_initialize do
+  Rails.logger.info "[SEO Plugin] Starting initialization..."
+
   TopicsController.class_eval do
     before_action :set_seo_meta_tags, only: :show
 
     private
 
     def set_seo_meta_tags
+      Rails.logger.info "[SEO Plugin] Checking meta tags for URL: #{request.fullpath}"
+      
       return unless @topic_view&.topic
-
+      
       url = request.fullpath
       page = params[:page].to_i
       has_post_number = url.match?(/\/\d+\/\d+$/) || params[:post_number].present?
+
+      Rails.logger.info "[SEO Plugin] Page: #{page}, Has post number: #{has_post_number}"
 
       if page > 1 || has_post_number
         @meta_tags ||= []
         @meta_tags << { name: 'robots', content: 'noindex, follow' }
         response.headers['X-Robots-Tag'] = 'noindex, follow'
+        Rails.logger.info "[SEO Plugin] Added noindex meta tag"
       end
 
-      # Set canonical URL
       @canonical_url = "#{Discourse.base_url}#{@topic_view.topic.relative_url}"
+      Rails.logger.info "[SEO Plugin] Set canonical URL: #{@canonical_url}"
     end
   end
 
@@ -48,4 +55,6 @@ after_initialize do
   ApplicationHelper.module_eval do
     prepend MetaTagsInHead
   end
+
+  Rails.logger.info "[SEO Plugin] Initialization complete"
 end
