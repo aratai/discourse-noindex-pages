@@ -1,1 +1,11 @@
-asd
+<% if @topic_view&.topic %>
+  <% url = scope.request.fullpath %>
+  <% page = scope.request.params[:page].to_i %>
+  <% has_post_number = url.match?(/\/\d+\/\d+$/) || scope.request.params[:post_number].present? %>
+  
+  <% if page > 1 || has_post_number %>
+    <meta name="robots" content="noindex, follow">
+  <% end %>
+  
+  <link rel="canonical" href="<%= Discourse.base_url %><%= @topic_view.topic.relative_url %>">
+<% end %>
