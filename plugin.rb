@@ -6,6 +6,7 @@
 # authors: Tvoj Nick
 
 after_initialize do
+  # Pridáme meta tagy do serializéra
   add_to_serializer(:topic_view, :seo_meta_tags) do
     return '' unless object.topic
 
@@ -27,5 +28,36 @@ after_initialize do
     meta += %Q(<link rel="canonical" href="#{canonical}" />)
 
     meta
+  end
+
+  # Pridáme meta tagy do hlavičky
+  register_html_builder('server:before-head-close') do |controller|
+    if controller.instance_of?(TopicsController)
+      topic_view = controller.instance_variable_get(:@topic_view)
+      next '' unless topic_view&.topic
+
+      url = controller.request.fullpath
+      page = controller.params[:page].to_i
+      has_post_number = url.match?(/\/\d+\/\d+$/) || controller.params[:post_number].present?
+
+      result = ''
+
+      if page > 1 || has_post_number
+        Rails.logger.info "[SEO Plugin] Adding noindex meta tag"
+        result += '<meta name="robots" content="noindex, follow">'
+      end
+
+      canonical = "#{Discourse.base_url}#{topic_view.topic.relative_url}"
+      result += %Q(<link rel="canonical" href="#{canonical}" />)
+
+      result
+    else
+      ''
+    end
+  end
+
+  # Zabezpečíme, že sa meta tagy dostanú do hlavičky
+  on(:topic_view_serializer_after_init) do |serializer|
+    serializer.include_seo_meta_tags = true
   end
 end
