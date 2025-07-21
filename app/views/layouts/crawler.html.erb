@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="<%= html_lang %>">
+  <head>
+    <meta charset="utf-8">
+    <title><%= content_for?(:title) ? yield(:title) : SiteSetting.title %></title>
+    <%= canonical_link_tag %>
+    <%= render_seo_tags %>
+    <%= theme_lookup("head_tag") %>
+    <%= render_seo_meta_tags %>
+    <%= crawler_layout_header %>
+    <%= yield :head %>
+  </head>
+  <body class="crawler">
+    <%= yield %>
+    <%= theme_lookup("body_tag") %>
+    <%= yield :after_body %>
+  </body>
+</html>
