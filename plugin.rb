@@ -6,7 +6,6 @@
 # authors: Tvoj Nick
 
 after_initialize do
-
   add_to_serializer(:topic_view, :seo_meta_tags) do
     return '' unless object.topic
 
@@ -29,9 +28,4 @@ after_initialize do
 
     meta
   end
-
-  on(:topic_view_serializer_after_init) do |serializer|
-    serializer.include_seo_meta_tags = true
-  end
-
 end
