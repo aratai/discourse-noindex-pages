@@ -11,8 +11,8 @@ after_initialize do
     return '' unless object.topic
 
     url = scope.request.fullpath
-    page = scope.params[:page].to_i
-    has_post_number = url.match?(/\/\d+\/\d+$/) || scope.params[:post_number].present?
+    page = scope.request.params[:page].to_i
+    has_post_number = url.match?(/\/\d+\/\d+$/) || scope.request.params[:post_number].present?
 
     meta = ""
 
