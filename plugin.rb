@@ -6,17 +6,16 @@
 # authors: Tvoj Nick
 
 after_initialize do
-  # Helper method to check if we're dealing with HTML request and have a valid topic
-  def should_process?(scope, object)
-    scope.is_a?(Guardian) && 
-    scope.request.format == :html && 
-    object.respond_to?(:topic) && 
-    object.topic
+  add_to_serializer(:topic_view, :extra_noindex) do
+    if should_noindex?
+      '<meta name="robots" content="noindex, follow">'
+    else
+      ''
+    end
   end
 
-  # Helper to determine if current page should be noindexed
-  def should_noindex?(scope, object)
-    return false unless should_process?(scope, object)
+  add_to_serializer(:topic_view, :should_noindex?) do
+    return false unless should_process?
 
     url = scope.request.fullpath
     params = object.instance_variable_get(:@params)
@@ -27,22 +26,19 @@ after_initialize do
     is_paged || has_post_number
   end
 
-  add_to_serializer(:topic_view, :extra_noindex) do
-    if should_noindex?(scope, object)
-      '<meta name="robots" content="noindex, follow">'
-    else
-      ''
-    end
+  add_to_serializer(:topic_view, :should_process?) do
+    scope.is_a?(Guardian) && 
+    scope.request.format == :html && 
+    object.respond_to?(:topic) && 
+    object.topic
   end
 
   add_to_serializer(:topic_view, :canonical_url) do
-    return '' unless should_process?(scope, object)
+    return '' unless should_process?
     
     base_url = Discourse.base_url_no_prefix
     topic_url = object.topic.relative_url
     
-    # Always point canonical to the first page/main topic URL
     "#{base_url}#{topic_url}"
   end
 end
-
