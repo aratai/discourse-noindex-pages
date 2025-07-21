@@ -5,47 +5,42 @@
 # version: 0.1
 # authors: Tvoj Nick
 
+enabled_site_setting :discourse_noindex_pages_enabled
+
 after_initialize do
-  Rails.logger.info "[SEO Plugin] Starting initialization..."
 
-  # Pridáme helper metódy do ApplicationHelper
-  ApplicationHelper.class_eval do
-    def seo_meta_tags
-      return "" unless @topic_view&.topic
+  # Prepend to TopicsController to add X-Robots-Tag
+  module ::TopicsControllerNoindexAuto
+    def show
+      super
 
-      Rails.logger.info "[SEO Plugin] Generating SEO meta tags for: #{request.fullpath}"
-      
+      return unless SiteSetting.discourse_noindex_pages_enabled
+
       url = request.fullpath
       page = params[:page].to_i
       has_post_number = url.match?(/\/\d+\/\d+$/) || params[:post_number].present?
 
-      Rails.logger.info "  - Page: #{page}"
-      Rails.logger.info "  - Has post number: #{has_post_number}"
-      
-      result = []
-
-      # Noindex tag
       if page > 1 || has_post_number
-        Rails.logger.info "  => Adding noindex tag"
-        result << '<meta name="robots" content="noindex, follow">'
+        response.headers["X-Robots-Tag"] = "noindex, follow"
       end
-
-      # Canonical URL
-      canonical_url = "#{Discourse.base_url}#{@topic_view.topic.relative_url}"
-      Rails.logger.info "  => Setting canonical: #{canonical_url}"
-      result << %Q(<link rel="canonical" href="#{canonical_url}">)
-
-      final_result = result.join("\n")
-      Rails.logger.info "  - Final tags: #{final_result}"
-      final_result.html_safe
     end
   end
 
-  # Pridáme helper do zoznamu SEO tagov
-  on(:topic_view_seo_tags) do |tags, topic_view|
-    Rails.logger.info "[SEO Plugin] Adding SEO tags to topic view"
-    tags << :seo_meta_tags
+  ::TopicsController.prepend ::TopicsControllerNoindexAuto
+
+  # Inject <meta name="robots"> into HTML head
+  register_html_builder('server:before-head-close') do |controller|
+    return '' unless SiteSetting.discourse_noindex_pages_enabled
+
+    url = controller.request.fullpath
+    page = controller.params[:page].to_i
+    has_post_number = url.match?(/\/\d+\/\d+$/) || controller.params[:post_number].present?
+
+    if page > 1 || has_post_number
+      '<meta name="robots" content="noindex, follow">'
+    else
+      ''
+    end
   end
 
-  Rails.logger.info "[SEO Plugin] Initialization complete"
 end
