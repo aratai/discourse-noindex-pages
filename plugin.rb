@@ -5,16 +5,12 @@
 # version: 0.1
 # authors: Tvoj Nick
 
-enabled_site_setting :discourse_noindex_pages_enabled
-
 after_initialize do
 
   # Prepend to TopicsController to add X-Robots-Tag
   module ::TopicsControllerNoindexAuto
     def show
       super
-
-      return unless SiteSetting.discourse_noindex_pages_enabled
 
       url = request.fullpath
       page = params[:page].to_i
@@ -30,8 +26,6 @@ after_initialize do
 
   # Inject <meta name="robots"> into HTML head
   register_html_builder('server:before-head-close') do |controller|
-    return '' unless SiteSetting.discourse_noindex_pages_enabled
-
     url = controller.request.fullpath
     page = controller.params[:page].to_i
     has_post_number = url.match?(/\/\d+\/\d+$/) || controller.params[:post_number].present?
