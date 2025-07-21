@@ -14,57 +14,45 @@ after_initialize do
     private
 
     def set_seo_meta_tags
-      Rails.logger.info "[SEO Plugin] Request format: #{request.format}"
-      Rails.logger.info "[SEO Plugin] URL: #{request.fullpath}"
+      Rails.logger.info "----------------------------------------"
+      Rails.logger.info "[SEO Plugin] Processing request:"
+      Rails.logger.info "  - Format: #{request.format}"
+      Rails.logger.info "  - URL: #{request.fullpath}"
+      Rails.logger.info "  - Params: #{params.inspect}"
       
-      # Spracujeme len HTML requesty
       return unless request.format.html?
       return unless @topic_view&.topic
 
       url = request.fullpath
       page = params[:page].to_i
-      has_post_number = url.match?(/\/\d+\/\d+$/) || params[:post_number].present?
+      post_number = params[:post_number]
+      has_post_number = url.match?(/\/\d+\/\d+$/) || post_number.present?
 
-      Rails.logger.info "[SEO Plugin] Processing HTML request:"
-      Rails.logger.info "  - Page: #{page}"
+      Rails.logger.info "[SEO Plugin] Analysis:"
+      Rails.logger.info "  - Page number: #{page}"
+      Rails.logger.info "  - Post number: #{post_number}"
       Rails.logger.info "  - Has post number: #{has_post_number}"
-      Rails.logger.info "  - Params: #{params.inspect}"
 
+      # Pridáme meta tagy priamo do response body
       if page > 1 || has_post_number
-        @meta_tags ||= []
-        @meta_tags << { name: 'robots', content: 'noindex, follow' }
+        meta_tag = '<meta name="robots" content="noindex, follow">'
+        response.body = response.body.sub('</head>', "#{meta_tag}</head>") if response.body
+
+        # Pridáme aj header
         response.headers['X-Robots-Tag'] = 'noindex, follow'
-        Rails.logger.info "[SEO Plugin] Added noindex meta tag"
+        
+        Rails.logger.info "[SEO Plugin] Added noindex tags:"
+        Rails.logger.info "  - Meta tag: #{meta_tag}"
+        Rails.logger.info "  - Header: X-Robots-Tag: noindex, follow"
       end
 
-      @canonical_url = "#{Discourse.base_url}#{@topic_view.topic.relative_url}"
-      Rails.logger.info "[SEO Plugin] Set canonical URL: #{@canonical_url}"
+      # Pridáme canonical URL
+      canonical_url = "#{Discourse.base_url}#{@topic_view.topic.relative_url}"
+      canonical_tag = %Q(<link rel="canonical" href="#{canonical_url}">)
+      response.body = response.body.sub('</head>', "#{canonical_tag}</head>") if response.body
+
+      Rails.logger.info "[SEO Plugin] Added canonical URL: #{canonical_url}"
+      Rails.logger.info "----------------------------------------"
     end
   end
-
-  # Override the default head template
-  module MetaTagsInHead
-    def discourse_stylesheet_tags
-      Rails.logger.info "[SEO Plugin] Rendering head tags"
-      Rails.logger.info "  - Meta tags: #{@meta_tags.inspect}"
-      Rails.logger.info "  - Canonical: #{@canonical_url}"
-      
-      result = super
-      if @meta_tags
-        @meta_tags.each do |tag|
-          result << "<meta name='#{tag[:name]}' content='#{tag[:content]}'>\n"
-        end
-      end
-      if @canonical_url
-        result << "<link rel='canonical' href='#{@canonical_url}'>\n"
-      end
-      result.html_safe
-    end
-  end
-
-  ApplicationHelper.module_eval do
-    prepend MetaTagsInHead
-  end
-
-  Rails.logger.info "[SEO Plugin] Initialization complete"
 end
