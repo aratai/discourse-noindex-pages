@@ -8,51 +8,67 @@
 after_initialize do
   Rails.logger.info "[SEO Plugin] Starting initialization..."
 
-  TopicsController.class_eval do
-    before_action :set_seo_meta_tags, only: :show
+  # Pridáme meta tagy do crawler layoutu
+  add_to_class(:topic_view, :crawler_noindex_tag) do
+    Rails.logger.info "[SEO Plugin] Generating noindex tag:"
+    Rails.logger.info "  - URL: #{scope.request.fullpath}"
+    Rails.logger.info "  - Params: #{scope.params.inspect}"
+    
+    url = scope.request.fullpath
+    page = scope.params[:page].to_i
+    has_post_number = url.match?(/\/\d+\/\d+$/) || scope.params[:post_number].present?
 
-    private
+    Rails.logger.info "  - Page: #{page}"
+    Rails.logger.info "  - Has post number: #{has_post_number}"
 
-    def set_seo_meta_tags
-      Rails.logger.info "----------------------------------------"
-      Rails.logger.info "[SEO Plugin] Processing request:"
-      Rails.logger.info "  - Format: #{request.format}"
-      Rails.logger.info "  - URL: #{request.fullpath}"
-      Rails.logger.info "  - Params: #{params.inspect}"
-      
-      return unless request.format.html?
-      return unless @topic_view&.topic
-
-      url = request.fullpath
-      page = params[:page].to_i
-      post_number = params[:post_number]
-      has_post_number = url.match?(/\/\d+\/\d+$/) || post_number.present?
-
-      Rails.logger.info "[SEO Plugin] Analysis:"
-      Rails.logger.info "  - Page number: #{page}"
-      Rails.logger.info "  - Post number: #{post_number}"
-      Rails.logger.info "  - Has post number: #{has_post_number}"
-
-      # Pridáme meta tagy priamo do response body
-      if page > 1 || has_post_number
-        meta_tag = '<meta name="robots" content="noindex, follow">'
-        response.body = response.body.sub('</head>', "#{meta_tag}</head>") if response.body
-
-        # Pridáme aj header
-        response.headers['X-Robots-Tag'] = 'noindex, follow'
-        
-        Rails.logger.info "[SEO Plugin] Added noindex tags:"
-        Rails.logger.info "  - Meta tag: #{meta_tag}"
-        Rails.logger.info "  - Header: X-Robots-Tag: noindex, follow"
-      end
-
-      # Pridáme canonical URL
-      canonical_url = "#{Discourse.base_url}#{@topic_view.topic.relative_url}"
-      canonical_tag = %Q(<link rel="canonical" href="#{canonical_url}">)
-      response.body = response.body.sub('</head>', "#{canonical_tag}</head>") if response.body
-
-      Rails.logger.info "[SEO Plugin] Added canonical URL: #{canonical_url}"
-      Rails.logger.info "----------------------------------------"
+    result = if page > 1 || has_post_number
+      Rails.logger.info "  => Adding noindex tag"
+      '<meta name="robots" content="noindex, follow">'
+    else
+      Rails.logger.info "  => No noindex needed"
+      ''
     end
+
+    Rails.logger.info "  - Result: #{result}"
+    result
   end
+
+  add_to_class(:topic_view, :crawler_canonical_tag) do
+    Rails.logger.info "[SEO Plugin] Generating canonical tag:"
+    canonical_url = "#{Discourse.base_url}#{topic.relative_url}"
+    Rails.logger.info "  - Canonical URL: #{canonical_url}"
+    
+    result = "<link rel='canonical' href='#{canonical_url}'>"
+    Rails.logger.info "  - Result: #{result}"
+    result
+  end
+
+  # Pridáme meta tagy do hlavičky
+  register_html_builder('server:before-head-close-crawler') do |controller|
+    Rails.logger.info "[SEO Plugin] Processing HTML builder:"
+    Rails.logger.info "  - Controller: #{controller.class.name}"
+    
+    unless controller.is_a?(TopicsController)
+      Rails.logger.info "  => Skipping: Not a TopicsController"
+      next ''
+    end
+
+    topic_view = controller.instance_variable_get(:@topic_view)
+    unless topic_view&.topic
+      Rails.logger.info "  => Skipping: No topic view or topic"
+      next ''
+    end
+
+    Rails.logger.info "  - Topic: #{topic_view.topic.title}"
+    
+    result = [
+      topic_view.crawler_noindex_tag,
+      topic_view.crawler_canonical_tag
+    ].join("\n")
+
+    Rails.logger.info "  - Final HTML: #{result}"
+    result
+  end
+
+  Rails.logger.info "[SEO Plugin] Initialization complete"
 end
