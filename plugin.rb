@@ -11,12 +11,12 @@ after_initialize do
     return '' unless object.topic
 
     url = scope.request.fullpath
-    is_paged = object.instance_variable_get(:@params)[:page].to_i > 1
+    page = scope.params[:page].to_i
     has_post_number = url.match?(/\/\d+\/\d+$/) || scope.params[:post_number].present?
 
     meta = ""
 
-    if is_paged || has_post_number
+    if page > 1 || has_post_number
       Rails.logger.info "[SEO Plugin] Adding noindex to: #{url}"
       meta += '<meta name="robots" content="noindex, follow">'
     else
@@ -28,6 +28,10 @@ after_initialize do
     meta += %Q(<link rel="canonical" href="#{canonical}" />)
 
     meta
+  end
+
+  on(:topic_view_serializer_after_init) do |serializer|
+    serializer.include_seo_meta_tags = true
   end
 
 end
