@@ -26,18 +26,11 @@ after_initialize do
   end
 
   ::TopicsController.prepend ::TopicsControllerCanonicalAuto
-
-  # (Voliteľné, ale odporúčané) Pridaj canonical aj do HTML head
-  register_html_builder('server:before-head-close') do |controller|
-    url = controller.request.fullpath
-    if url =~ %r{^/t/([^/]+)/(\d+)}
-      slug = $1
-      topic_id = $2
-      canonical_url = "https://infrastruktura.sk/t/#{slug}/#{topic_id}"
-      "<link rel=\"canonical\" href=\"#{canonical_url}\">"
-    else
-      ""
-    end
+  
+  module CanonicalURL::Helpers
+     def canonical_link_tag(url = nil)
+        ""
+     end
   end
 
 end
