@@ -7,33 +7,36 @@
 
 after_initialize do
 
-  # Prepend to TopicsController to add X-Robots-Tag
-  module ::TopicsControllerNoindexAuto
+  # Patchne TopicsController, aby pridal canonical do HTTP hlavičky
+  module ::TopicsControllerCanonicalAuto
     def show
       super
 
       url = request.fullpath
-      page = params[:page].to_i
-      has_post_number = url.match?(/\/\d+\/\d+$/) || params[:post_number].present?
+      # Nájde slug a topic_id z URL: /t/slug/123 alebo /t/slug/123?page=2 atď.
+      if url =~ %r{^/t/([^/]+)/(\d+)}
+        slug = $1
+        topic_id = $2
+        canonical_url = "https://infrastruktura.sk/t/#{slug}/#{topic_id}"
 
-      if page > 1 || has_post_number
-        response.headers["X-Robots-Tag"] = "noindex, follow"
+        # Pridaj do HTTP hlavičky
+        response.headers["Link"] = "<#{canonical_url}>; rel=\"canonical\""
       end
     end
   end
 
-  ::TopicsController.prepend ::TopicsControllerNoindexAuto
+  ::TopicsController.prepend ::TopicsControllerCanonicalAuto
 
-  # Inject <meta name="robots"> into HTML head
+  # (Voliteľné, ale odporúčané) Pridaj canonical aj do HTML head
   register_html_builder('server:before-head-close') do |controller|
     url = controller.request.fullpath
-    page = controller.params[:page].to_i
-    has_post_number = url.match?(/\/\d+\/\d+$/) || controller.params[:post_number].present?
-
-    if page > 1 || has_post_number
-      '<meta name="robots" content="noindex, follow">'
+    if url =~ %r{^/t/([^/]+)/(\d+)}
+      slug = $1
+      topic_id = $2
+      canonical_url = "https://infrastruktura.sk/t/#{slug}/#{topic_id}"
+      "<link rel=\"canonical\" href=\"#{canonical_url}\">"
     else
-      ''
+      ""
     end
   end
 
