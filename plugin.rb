@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 # name: discourse-noindex-pages
-# about: Sets noindex for archive topics and canonical headers for pagination
-# version: 0.1
+# about: Adds noindex to archive topics and canonical headers for pagination
+# version: 0.2
 # authors: Tvoj Nick
 
 after_initialize do
@@ -11,7 +11,7 @@ after_initialize do
     def show
       super
 
-      # --- Canonical ---
+      # Nastav canonical hlavičku
       url = request.fullpath
       if url =~ %r{^/t/([^/]+)/(\d+)}
         slug = $1
@@ -21,19 +21,19 @@ after_initialize do
         Rails.logger.warn("CANONICAL SET: #{canonical_url}")
       end
 
-      # --- Noindex for archive ---
+      # Nastav noindex pre archiv
       if @topic
-        archive_root = Category.find_by(slug: "archiv-monitoringu-tlace")
+        archive_root_id = 40
 
-        if archive_root && @topic.category
-          archive_ids = [archive_root.id] + archive_root.subcategories.pluck(:id)
+        # Získaj všetky ID podkategórií archívu
+        archive_ids = Category.where(parent_category_id: archive_root_id).pluck(:id)
+        archive_ids << archive_root_id
 
-          if archive_ids.include?(@topic.category_id)
-            response.headers["X-Robots-Tag"] = "noindex, follow"
-            Rails.logger.warn("NOINDEX APPLIED: Topic #{@topic.id} in archive")
-          else
-            Rails.logger.warn("NOINDEX SKIPPED: Topic #{@topic.id} not in archive")
-          end
+        if archive_ids.include?(@topic.category_id)
+          response.headers["X-Robots-Tag"] = "noindex, follow"
+          Rails.logger.warn("NOINDEX APPLIED: Topic #{@topic.id} in archive by ID")
+        else
+          Rails.logger.warn("NOINDEX SKIPPED: Topic #{@topic.id} not in archive")
         end
       end
     end
@@ -46,5 +46,4 @@ after_initialize do
       ""
     end
   end
-
 end
