@@ -47,17 +47,6 @@ end
 
   ::TopicsController.prepend ::TopicsControllerSEO
 
-  archive_root_id = 40
-  archive_ids = Category.where(parent_category_id: archive_root_id).pluck(:id) + [archive_root_id]
-
-  add_to_serializer(:sitemap_topic, :bumped_at) do
-    if archive_ids.include?(object.category_id)
-      Time.now.utc
-    else
-      object.bumped_at
-    end
-  end
-
 
   module ::CanonicalURL::Helpers
     def canonical_link_tag(url = nil)
