@@ -47,7 +47,34 @@ end
 
   ::TopicsController.prepend ::TopicsControllerSEO
 
+module ::SitemapExtension
+  def sitemap_topics
+    archive_root_id = 40
+    archive_ids = Category.where(parent_category_id: archive_root_id).pluck(:id) + [archive_root_id]
 
+    Rails.logger.warn("[SITEMAP] sitemap_topics called for #{name}")
+    Rails.logger.warn("[SITEMAP] Archive category_ids: #{archive_ids}")
+
+    all_topics = Topic
+      .where(visible: true)
+      .joins(:category)
+      .where(categories: { read_restricted: false })
+
+    if name == Sitemap::RECENT_SITEMAP_NAME || name == Sitemap::NEWS_SITEMAP_NAME
+      topics = all_topics.where.not(category_id: archive_ids)
+      topics = topics.where("bumped_at > ?", 3.days.ago).order(bumped_at: :desc)
+    else
+      topics = all_topics
+      offset = (name.to_i - 1) * max_page_size
+      topics = topics.order(id: :asc).limit(max_page_size).offset(offset)
+    end
+
+    Rails.logger.warn("[SITEMAP] Final topic count: #{topics.count}")
+    topics
+  end
+end
+
+::Sitemap.prepend(::SitemapExtension)
 
 
   module ::CanonicalURL::Helpers
