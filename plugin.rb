@@ -55,22 +55,31 @@ module ::SitemapExtension
     Rails.logger.warn("[SITEMAP] sitemap_topics called for #{name}")
     Rails.logger.warn("[SITEMAP] Archive category_ids: #{archive_ids}")
 
-    all_topics = Topic
+    base = Topic
       .where(visible: true)
       .joins(:category)
       .where(categories: { read_restricted: false })
 
     if name == Sitemap::RECENT_SITEMAP_NAME || name == Sitemap::NEWS_SITEMAP_NAME
-      topics = all_topics.where.not(category_id: archive_ids)
-      topics = topics.where("bumped_at > ?", 3.days.ago).order(bumped_at: :desc)
+      topics = base.where.not(category_id: archive_ids)
+                   .where("bumped_at > ?", 3.days.ago)
+                   .order(bumped_at: :desc)
     else
-      topics = all_topics
       offset = (name.to_i - 1) * max_page_size
-      topics = topics.order(id: :asc).limit(max_page_size).offset(offset)
+      topics = base.order(id: :asc).limit(max_page_size).offset(offset)
     end
 
     Rails.logger.warn("[SITEMAP] Final topic count: #{topics.count}")
-    topics
+
+    now = Time.zone.now
+
+    # prepíš bumped_at IBA ak téma je v archívnej kategórii
+    topics.map do |t|
+      if archive_ids.include?(t.category_id)
+        t.define_singleton_method(:bumped_at) { now }
+      end
+      t
+    end
   end
 end
 
