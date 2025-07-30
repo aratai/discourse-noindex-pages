@@ -47,43 +47,16 @@ end
 
   ::TopicsController.prepend ::TopicsControllerSEO
 
-  module ::SitemapExtension
-    def sitemap_topics
-      archive_root_id = 40
-      archive_ids = Category.where(parent_category_id: archive_root_id).pluck(:id) + [archive_root_id]
+  archive_root_id = 40
+  archive_ids = Category.where(parent_category_id: archive_root_id).pluck(:id) + [archive_root_id]
 
-      Rails.logger.warn("[SITEMAP] sitemap_topics called for #{name}")
-      Rails.logger.warn("[SITEMAP] Archive category_ids: #{archive_ids}")
-
-      indexable_topics = Topic.where(visible: true, archetype: "regular")
-        .joins(:category)
-        .where(categories: { read_restricted: false })
-        .order(id: :asc)
-
-      if name == Sitemap::RECENT_SITEMAP_NAME
-        indexable_topics = indexable_topics.where("bumped_at > ?", 3.days.ago).order(bumped_at: :desc)
-      elsif name == Sitemap::NEWS_SITEMAP_NAME
-        indexable_topics = indexable_topics.where("bumped_at > ?", 72.hours.ago).order(bumped_at: :desc)
-      else
-        offset = (name.to_i - 1) * max_page_size
-        indexable_topics = indexable_topics.limit(max_page_size).offset(offset)
-      end
-
-      today = Time.now.utc
-
-      topics = indexable_topics
-        .pluck(:id, :slug, :bumped_at, :updated_at, :posts_count, :category_id)
-        .map do |id, slug, bumped_at, updated_at, posts_count, category_id|
-          new_bumped = archive_ids.include?(category_id) ? today : bumped_at
-          [id, slug, new_bumped, updated_at, posts_count]
-        end
-
-      Rails.logger.warn("[SITEMAP] Final topic count: #{topics.size}")
-      topics
+  add_to_serializer(:sitemap_topic, :bumped_at) do
+    if archive_ids.include?(object.category_id)
+      Time.now.utc
+    else
+      object.bumped_at
     end
   end
-
-  ::Sitemap.prepend(::SitemapExtension)
 
 
   module ::CanonicalURL::Helpers
