@@ -47,6 +47,30 @@ end
 
   ::TopicsController.prepend ::TopicsControllerSEO
 
+    module ::SitemapExtension
+    def sitemap_topics
+      archive_root_id = 40
+      archive_ids = Category.where(parent_category_id: archive_root_id).pluck(:id)
+      archive_ids << archive_root_id
+
+      indexable_topics =
+        Topic.where(visible: true)
+             .joins(:category)
+             .where(categories: { read_restricted: false })
+             .where.not(category_id: archive_ids)
+
+      if name == Sitemap::RECENT_SITEMAP_NAME
+        indexable_topics.where("bumped_at > ?", 3.days.ago).order(bumped_at: :desc)
+      elsif name == Sitemap::NEWS_SITEMAP_NAME
+        indexable_topics.where("bumped_at > ?", 72.hours.ago).order(bumped_at: :desc)
+      else
+        offset = (name.to_i - 1) * max_page_size
+        indexable_topics.order(id: :asc).limit(max_page_size).offset(offset)
+      end
+    end
+  end
+
+  ::Sitemap.prepend(::SitemapExtension)
 
   module ::CanonicalURL::Helpers
     def canonical_link_tag(url = nil)
