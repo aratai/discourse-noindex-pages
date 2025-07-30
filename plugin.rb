@@ -47,52 +47,7 @@ end
 
   ::TopicsController.prepend ::TopicsControllerSEO
 
-module ::SitemapExtension
-  def sitemap_topics
-    archive_root_id = 40
-    archive_ids = Category.where(parent_category_id: archive_root_id).pluck(:id) + [archive_root_id]
 
-    Rails.logger.warn("[SITEMAP] sitemap_topics called for #{name}")
-    Rails.logger.warn("[SITEMAP] Archive category_ids: #{archive_ids}")
-
-    base_scope = Topic.where(visible: true)
-                      .joins(:category)
-                      .where(categories: { read_restricted: false })
-
-    if name == Sitemap::RECENT_SITEMAP_NAME
-      topics = base_scope.where("bumped_at > ?", 3.days.ago).order(bumped_at: :desc)
-
-    elsif name == Sitemap::NEWS_SITEMAP_NAME
-      topics = base_scope.where("bumped_at > ?", 72.hours.ago).order(bumped_at: :desc)
-
-    else
-      # Hlavný sitemap (číselné)
-      offset = (name.to_i - 1) * max_page_size
-      topics = base_scope.order(id: :asc).limit(max_page_size).offset(offset)
-
-      topics = topics.map do |t|
-        is_archive = archive_ids.include?(t.category_id)
-        lastmod = is_archive ? Time.now.utc : t.updated_at
-
-        OpenStruct.new(
-          id: t.id,
-          slug: t.slug,
-          title: t.title,
-          lastmod: lastmod,
-          posts_count: t.posts_count
-        )
-      end
-
-      Rails.logger.warn("[SITEMAP] Final topic count: #{topics.count}")
-      return topics
-    end
-
-    Rails.logger.warn("[SITEMAP] Final topic count: #{topics.count}")
-    topics
-  end
-end
-
-::Sitemap.prepend(::SitemapExtension)
 
 
   module ::CanonicalURL::Helpers
