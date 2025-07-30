@@ -55,30 +55,32 @@ module ::SitemapExtension
     Rails.logger.warn("[SITEMAP] sitemap_topics called for #{name}")
     Rails.logger.warn("[SITEMAP] Archive category_ids: #{archive_ids}")
 
-    base = Topic
-      .where(visible: true)
+    indexable_topics = Topic.where(visible: true)
       .joins(:category)
       .where(categories: { read_restricted: false })
 
-    if name == Sitemap::RECENT_SITEMAP_NAME || name == Sitemap::NEWS_SITEMAP_NAME
-      topics = base.where.not(category_id: archive_ids)
-                   .where("bumped_at > ?", 3.days.ago)
-                   .order(bumped_at: :desc)
+    if name == Sitemap::RECENT_SITEMAP_NAME
+      indexable_topics = indexable_topics.where("bumped_at > ?", 3.days.ago).order(bumped_at: :desc)
+    elsif name == Sitemap::NEWS_SITEMAP_NAME
+      indexable_topics = indexable_topics.where("bumped_at > ?", 72.hours.ago).order(bumped_at: :desc)
     else
       offset = (name.to_i - 1) * max_page_size
-      topics = base.order(id: :asc).limit(max_page_size).offset(offset)
+      indexable_topics = indexable_topics.order(id: :asc).limit(max_page_size).offset(offset)
     end
 
-    Rails.logger.warn("[SITEMAP] Final topic count: #{topics.count}")
+    Rails.logger.warn("[SITEMAP] Final topic count: #{indexable_topics.count}")
 
-    now = Time.zone.now
+    now = Time.now.utc
 
-    # prepíš bumped_at IBA ak téma je v archívnej kategórii
-    topics.map do |t|
-      if archive_ids.include?(t.category_id)
-        t.define_singleton_method(:bumped_at) { now }
-      end
-      t
+    # Namiesto Topic objektov vráť polia v rovnakom formáte ako očakáva view
+    indexable_topics.map do |t|
+      [
+        t.id,
+        t.slug,
+        archive_ids.include?(t.category_id) ? now : t.bumped_at,
+        t.updated_at,
+        t.posts_count
+      ]
     end
   end
 end
