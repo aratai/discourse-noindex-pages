@@ -68,20 +68,17 @@ module ::SitemapExtension
       indexable_topics = indexable_topics.order(id: :asc).limit(max_page_size).offset(offset)
     end
 
-    Rails.logger.warn("[SITEMAP] Final topic count: #{indexable_topics.count}")
+    today = Time.now.utc
 
-    now = Time.now.utc
-
-    # Namiesto Topic objektov vráť polia v rovnakom formáte ako očakáva view
-    indexable_topics.map do |t|
-      [
-        t.id,
-        t.slug,
-        archive_ids.include?(t.category_id) ? now : t.bumped_at,
-        t.updated_at,
-        t.posts_count
-      ]
+    topics = indexable_topics.map do |t|
+      if archive_ids.include?(t.category_id)
+        t.define_singleton_method(:bumped_at) { today }
+      end
+      t
     end
+
+    Rails.logger.warn("[SITEMAP] Final topic count: #{topics.count}")
+    topics
   end
 end
 
