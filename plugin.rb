@@ -6,75 +6,30 @@
 # authors: Tvoj Nick
 
 after_initialize do
-
 module ::TopicsControllerSEO
   def show
-    super
-
-    # --- Canonical ---
+    # --- Kontrola pagináciách PRED super ---
     url = request.fullpath
-    if url =~ %r{^/t/([^/]+)/(\d+)}
-      slug = $1
-      topic_id = $2
-      canonical_url = "https://infrastruktura.sk/t/#{slug}/#{topic_id}"
-      response.headers["Link"] = "<#{canonical_url}>; rel=\"canonical\""
-      Rails.logger.warn("CANONICAL SET: #{canonical_url}")
+    is_pagination = url.include?('?page=') || url =~ %r{^/t/[^/]+/\d+/\d+}
+    
+    # Pre paginácie: vynútiť 200 namiesto 304 pre Googlebot
+    if is_pagination && request.user_agent&.include?('Googlebot')
+      request.headers.delete('If-Modified-Since')
+      request.headers.delete('If-None-Match')
+      Rails.logger.warn("FORCED 200 FOR GOOGLEBOT PAGINATION: #{url}")
     end
-
-    # --- Noindex ---
-    topic = @topic || Topic.find_by(id: params[:topic_id])
-    if topic
-      archive_root_id = 40
-      topic_cid = topic.category_id
-      Rails.logger.warn("TOPIC #{topic.id} has category_id: #{topic_cid}")
-
-      archive_ids = Category.where(parent_category_id: archive_root_id).pluck(:id)
-      archive_ids << archive_root_id
-      Rails.logger.warn("ARCHIVE IDS: #{archive_ids}")
-
-      if archive_ids.include?(topic_cid)
-        response.headers["X-Robots-Tag"] = "noindex, follow"
-        Rails.logger.warn("NOINDEX APPLIED: Topic #{topic.id}")
-      else
-        Rails.logger.warn("NOINDEX NOT APPLIED: Topic #{topic.id} category_id #{topic_cid} not in archive_ids")
-      end
+    
+    super
+    
+    # --- Noindex pre paginácie ---
+    if is_pagination
+      response.headers["X-Robots-Tag"] = "noindex, follow"
+      response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+      Rails.logger.warn("NOINDEX PAGINATION: #{url}")
     else
-      Rails.logger.warn("NO TOPIC FOUND with id=#{params[:topic_id]}")
+      Rails.logger.warn("MAIN TOPIC PAGE: #{url}")
     end
   end
 end
-
-
   ::TopicsController.prepend ::TopicsControllerSEO
-
-    module ::SitemapExtension
-    def sitemap_topics
-      archive_root_id = 40
-      archive_ids = Category.where(parent_category_id: archive_root_id).pluck(:id)
-      archive_ids << archive_root_id
-
-      indexable_topics =
-        Topic.where(visible: true)
-             .joins(:category)
-             .where(categories: { read_restricted: false })
-             .where.not(category_id: archive_ids)
-
-      if name == Sitemap::RECENT_SITEMAP_NAME
-        indexable_topics.where("bumped_at > ?", 3.days.ago).order(bumped_at: :desc)
-      elsif name == Sitemap::NEWS_SITEMAP_NAME
-        indexable_topics.where("bumped_at > ?", 72.hours.ago).order(bumped_at: :desc)
-      else
-        offset = (name.to_i - 1) * max_page_size
-        indexable_topics.order(id: :asc).limit(max_page_size).offset(offset)
-      end
-    end
-  end
-
-  ::Sitemap.prepend(::SitemapExtension)
-
-  module ::CanonicalURL::Helpers
-    def canonical_link_tag(url = nil)
-      ""
-    end
-  end
 end
