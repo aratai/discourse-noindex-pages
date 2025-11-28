@@ -49,21 +49,35 @@ after_initialize do
   end
 
   def to_html
-    href = url
+    original_href = url
     
-    # Očistíme URL od zbytočných sledovacích parametrov 
-    if href.include?("?")
-      href = href.split("?").first
+    # 1. Čistenie URL
+    cleaned_href = original_href.split("?").first
+    
+    # 2. Detekcia typu obsahu
+    is_reel = cleaned_href.include?("/reel/")
+    is_video = cleaned_href =~ /\/videos\//i || cleaned_href.include?("/share/v/") || is_reel
+
+    # 3. Nastavenie triedy a URL pre embed
+    if is_video || is_reel
+      # Ak je to VIDEO/REEL
+      class_name = "fb-video"
+      href_to_embed = cleaned_href # Použijeme čistú URL
+    else
+      # Ak je to ŠTANDARDNÝ POST (vrátane permalink.php)
+      class_name = "fb-post"
+      # Pre posty je potrebné nechať špecifické query parametre, inak sa neidentifikujú
+      href_to_embed = original_href
     end
 
-    # Vygenerujeme DOM element, ktorý Facebook SDK očakáva
+    # 4. Generovanie DOM elementu
     <<~HTML
-      <div class="fb-video" 
-           data-href="#{href}" 
+      <div class="#{class_name}" 
+           data-href="#{href_to_embed}" 
            data-width="500" 
            data-show-text="true">
-        <blockquote cite="#{href}" class="fb-xfbml-parse-ignore">
-          <a href="#{href}">Facebook Video</a>
+        <blockquote cite="#{href_to_embed}" class="fb-xfbml-parse-ignore">
+          <a href="#{href_to_embed}">Facebook Post</a>
         </blockquote>
       </div>
     HTML
