@@ -5,10 +5,6 @@
 # version: 0.3
 # authors: Tvoj Nick
 
-extend_content_security_policy(
-  script_src: ["https://connect.facebook.net"]
-)
-
 after_initialize do
   ##########################################
   # 1) NOINDEX PRE PAGINÁCIU TOPICOV
@@ -40,44 +36,59 @@ after_initialize do
   end
 
   ##########################################
-  # 2) FACEBOOK VIDEO OEMBED + DEBUG LOGY
+  # 2) FACEBOOK IFRAME ONEBOX (BEZ OEMBED)
   ##########################################
 
-    require "cgi"
+  require "cgi"
+  require "uri"
   require_dependency "onebox/engine/facebook_media_onebox"
 
   ::Onebox::Engine::FacebookMediaOnebox.class_eval do
+    # Povieme oneboxu, že vraciame hotové HTML (nie URL na oEmbed)
+    def has_html?
+      true
+    end
+
     def to_html
-    href = url
+      href = url
 
-  is_video =
-    href =~ /\/videos\//i ||
-    href.include?("/reel/") ||
-    href.include?("/share/v/")
+      # Rozhodneme, či je to video / reel / share, alebo obyčajný post
+      is_video =
+        href =~ /\/videos\//i ||
+        href.include?("/reel/") ||
+        href.include?("/share/v/")
 
-  base = is_video ?
-    "https://www.facebook.com/plugins/video.php" :
-    "https://www.facebook.com/plugins/post.php"
+      base =
+        if is_video
+          "https://www.facebook.com/plugins/video.php"
+        else
+          "https://www.facebook.com/plugins/post.php"
+        end
 
-  # Len odporúčaný width – aj tak ho prepíšeme CSSkom
-  width = 600
+      # Rovnaké čísla, ako ručne vložený iframe
+      width  = 500
+      height = is_video ? 281 : 576
 
-  src = "#{base}?href=#{CGI.escape(href)}&show_text=true&width=#{width}"
+      params = {
+        "href"      => href,
+        "show_text" => "true",
+        "width"     => width
+      }
 
-  <<~HTML
-    <div class="fb-embed-wrapper">
-      <iframe
-        src="#{src}"
-        width="100%"
-        height="auto"
-        scrolling="no"
-        frameborder="0"
-        allowfullscreen="true"
-        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-        style="border:none;overflow:hidden;aspect-ratio:4/5;">
-      </iframe>
-    </div>
-  HTML
-end
+      src = "#{base}?#{URI.encode_www_form(params)}"
+
+      <<~HTML
+        <iframe
+          src="#{src}"
+          width="#{width}"
+          height="#{height}"
+          style="border:none;overflow:hidden"
+          scrolling="no"
+          frameborder="0"
+          allowfullscreen="true"
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+        </iframe>
+      HTML
+    end
   end
 end
