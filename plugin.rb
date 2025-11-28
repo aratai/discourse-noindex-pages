@@ -62,17 +62,15 @@ after_initialize do
 
       fb_log("Request URL: #{oembed_url}")
 
-      response = ::Onebox::Helpers.fetch_response(oembed_url)
-      fb_log("HTTP #{response.code} for #{url}")
-
-      body = response.body.to_s
+      # fetch_response v Discourse vráti priamo BODY ako string
+      body = ::Onebox::Helpers.fetch_response(oembed_url).to_s
       fb_log("RESPONSE BODY (first 300 chars): #{body[0..300]}")
 
       data = ::MultiJson.load(body)
       html = data["html"].to_s
 
       if html.empty?
-        fb_log("EMPTY HTML returned from Graph API")
+        fb_log("EMPTY HTML returned from Graph API – parsed JSON keys: #{data.keys.join(", ")}")
         return nil
       end
 
