@@ -75,8 +75,7 @@ after_initialize do
       <div class="#{class_name}" 
            data-href="#{href_to_embed}" 
            data-show-text="true"
-           data-allowfullscreen="true"
-           data-lazy="true">
+           data-allowfullscreen="true">
         <blockquote cite="#{href_to_embed}" class="fb-xfbml-parse-ignore">
           <a href="#{href_to_embed}">Facebook Post</a>
         </blockquote>
