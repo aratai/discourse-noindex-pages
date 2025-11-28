@@ -5,6 +5,10 @@
 # version: 0.3
 # authors: Tvoj Nick
 
+extend_content_security_policy(
+  script_src: ["https://connect.facebook.net"]
+)
+
 after_initialize do
   ##########################################
   # 1) NOINDEX PRE PAGINÁCIU TOPICOV
