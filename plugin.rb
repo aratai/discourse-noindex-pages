@@ -50,54 +50,22 @@ after_initialize do
 
   def to_html
     href = url
-
-    is_reel =
-      href.include?("/reel/")
-
-    is_video =
-      href =~ /\/videos\//i || href.include?("/share/v/") || is_reel
-
-    base =
-      if is_video
-        "https://www.facebook.com/plugins/video.php"
-      else
-        "https://www.facebook.com/plugins/post.php"
-      end
-
-    # Rozumné defaulty
-    if is_reel
-      # Pomer podľa FB príkladu: 267x591 ~ 1:2.2
-      width  = 320    # šírka na fóre
-      height = (width * 2.2).to_i
-    elsif is_video
-      width  = 500
-      height = 281    # približne 16:9
-    else
-      width  = 500
-      height = 576    # post s textom
+    
+    # Očistíme URL od zbytočných sledovacích parametrov 
+    if href.include?("?")
+      href = href.split("?").first
     end
 
-    params = {
-      "href"       => href,
-      "show_text"  => "true",
-      "width"      => width,
-      "height"     => height, # FB to má rád v src
-      "t"          => 0,      # presne ako FB embed
-    }
-
-    src = "#{base}?#{URI.encode_www_form(params)}"
-
+    # Vygenerujeme DOM element, ktorý Facebook SDK očakáva
     <<~HTML
-      <iframe
-        src="#{src}"
-        width="#{width}"
-        height="#{height}"
-        style="border:none;overflow:hidden"
-        scrolling="no"
-        frameborder="0"
-        allowfullscreen="true"
-        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-      </iframe>
+      <div class="fb-video" 
+           data-href="#{href}" 
+           data-width="500" 
+           data-show-text="true">
+        <blockquote cite="#{href}" class="fb-xfbml-parse-ignore">
+          <a href="#{href}">Facebook Video</a>
+        </blockquote>
+      </div>
     HTML
   end
 end
