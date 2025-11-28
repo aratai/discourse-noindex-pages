@@ -74,7 +74,6 @@ after_initialize do
     <<~HTML
       <div class="#{class_name}" 
            data-href="#{href_to_embed}" 
-           data-width="500" 
            data-show-text="true"
            data-allowfullscreen="true">
         <blockquote cite="#{href_to_embed}" class="fb-xfbml-parse-ignore">
