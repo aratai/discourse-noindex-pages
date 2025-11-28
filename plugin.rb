@@ -58,8 +58,8 @@ after_initialize do
           "https://www.facebook.com/plugins/post.php"
         end
 
-      width  = 500
-      height = 281
+      width  = 600
+      height = 800
 
       src = "#{base}?href=#{CGI.escape(href)}&show_text=true&width=#{width}"
 
