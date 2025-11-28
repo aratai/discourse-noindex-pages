@@ -48,33 +48,36 @@ after_initialize do
 
   ::Onebox::Engine::FacebookMediaOnebox.class_eval do
     def to_html
-      href = url
+    href = url
 
-      # Rozhodneme, či ide o video, reel, share, alebo bežný post
-      base =
-        if href =~ /\/videos\//i || href.include?("/reel/") || href.include?("/share/v/")
-          "https://www.facebook.com/plugins/video.php"
-        else
-          "https://www.facebook.com/plugins/post.php"
-        end
+  is_video =
+    href =~ /\/videos\//i ||
+    href.include?("/reel/") ||
+    href.include?("/share/v/")
 
-      width  = 600
-      height = 800
+  base = is_video ?
+    "https://www.facebook.com/plugins/video.php" :
+    "https://www.facebook.com/plugins/post.php"
 
-      src = "#{base}?href=#{CGI.escape(href)}&show_text=true&width=#{width}"
+  # Len odporúčaný width – aj tak ho prepíšeme CSSkom
+  width = 600
 
-      <<~HTML
-        <iframe
-          src="#{src}"
-          width="#{width}"
-          height="#{height}"
-          style="border:none;overflow:hidden"
-          scrolling="no"
-          frameborder="0"
-          allowfullscreen="true"
-          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-        </iframe>
-      HTML
-    end
+  src = "#{base}?href=#{CGI.escape(href)}&show_text=true&width=#{width}"
+
+  <<~HTML
+    <div class="fb-embed-wrapper">
+      <iframe
+        src="#{src}"
+        width="100%"
+        height="auto"
+        scrolling="no"
+        frameborder="0"
+        allowfullscreen="true"
+        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+        style="border:none;overflow:hidden;aspect-ratio:4/5;">
+      </iframe>
+    </div>
+  HTML
+end
   end
 end
