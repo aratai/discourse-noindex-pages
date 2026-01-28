@@ -63,11 +63,14 @@ after_initialize do
       # Ak je to VIDEO/REEL
       class_name = "fb-video"
       href_to_embed = cleaned_href # Použijeme čistú URL
+      fallback_label = "Otvoriť video na Facebooku"
     else
       # Ak je to ŠTANDARDNÝ POST (vrátane permalink.php)
       class_name = "fb-post"
       # Pre posty je potrebné nechať špecifické query parametre, inak sa neidentifikujú
       href_to_embed = original_href
+
+      fallback_label = "Otvoriť príspevok na Facebooku"
     end
 
     # 4. Generovanie DOM elementu
@@ -77,8 +80,12 @@ after_initialize do
            data-show-text="true"
            data-allowfullscreen="true">
         <blockquote cite="#{href_to_embed}" class="fb-xfbml-parse-ignore">
-          <a href="#{href_to_embed}">Facebook Post</a>
+          <a href="#{href_to_embed}">#{fallback_label}</a>
         </blockquote>
+      </div>
+
+      <div class="fb-embed-fallback">
+        <a href="#{href_to_embed}" rel="nofollow ugc noopener" target="_blank">#{fallback_label}</a>
       </div>
     HTML
   end
