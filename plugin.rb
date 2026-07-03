@@ -90,4 +90,56 @@ after_initialize do
     HTML
   end
 end
+
+##########################################
+# 3) INSTAGRAM OEMBED (TOKENLESS, OFICIÁLNA DOKUMENTÁCIA)
+##########################################
+require "net/http"
+require "json"
+require "digest"
+require_dependency "onebox/engine/instagram_onebox"
+
+::Onebox::Engine::InstagramOnebox.class_eval do
+  def has_html?
+    true
+  end
+
+  def to_html
+    cleaned_href = clean_url
+    cache_key = "ig_oembed_#{Digest::SHA1.hexdigest(cleaned_href)}"
+    cached = Rails.cache.read(cache_key)
+    return cached if cached
+
+    begin
+      uri = URI("https://graph.facebook.com/v25.0/instagram_oembed?url=#{CGI.escape(cleaned_href)}&omitscript=true")
+      response = Net::HTTP.get_response(uri)
+
+      if response.is_a?(Net::HTTPSuccess)
+        data = JSON.parse(response.body)
+        html = data["html"]
+        if html.present?
+          Rails.cache.write(cache_key, html, expires_in: 7.days)
+          html
+        else
+          fallback_html(cleaned_href)
+        end
+      else
+        fallback_html(cleaned_href)
+      end
+    rescue => e
+      Rails.logger.warn("IG oEmbed failed for #{cleaned_href}: #{e.message}")
+      fallback_html(cleaned_href)
+    end
+  end
+
+  private
+
+  def fallback_html(href)
+    <<~HTML
+      <div class="ig-embed-fallback">
+        <a href="#{href}" rel="nofollow ugc noopener" target="_blank">Otvoriť príspevok na Instagrame</a>
+      </div>
+    HTML
+  end
+end
 end
