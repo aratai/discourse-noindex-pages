@@ -100,6 +100,8 @@ require "digest"
 require_dependency "onebox/engine/instagram_onebox"
 
 ::Onebox::Engine::InstagramOnebox.class_eval do
+  matches_regexp(/^https?:\/\/(?:www\.)?(?:instagram\.com|instagr\.am)\/?(?:.*)\/(?:p|tv|reel)\/[a-zA-Z\d_-]+/)
+  
   def has_html?
     true
   end
