@@ -7,35 +7,6 @@
 
 after_initialize do
   ##########################################
-  # 1) NOINDEX PRE PAGINÁCIU TOPICOV
-  ##########################################
-  module ::TopicsControllerSEO
-    def show
-      url = request.fullpath
-      is_pagination = url.include?("?page=") || url =~ %r{^/t/[^/]+/\d+/\d+}
-
-      if is_pagination && request.user_agent&.include?("Googlebot")
-        # zruš ETag/If-Modified-Since, nech má Googlebot vždy 200
-        request.env.delete("HTTP_IF_MODIFIED_SINCE")
-        request.env.delete("HTTP_IF_NONE_MATCH")
-      end
-
-      super
-
-      if is_pagination
-        response.headers["X-Robots-Tag"] = "noindex, follow"
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-      end
-    end
-  end
-
-  if defined?(::TopicsController)
-    ::TopicsController.prepend ::TopicsControllerSEO
-  else
-    DiscourseEvent.on(:controllers_loaded) { ::TopicsController.prepend ::TopicsControllerSEO }
-  end
-
-  ##########################################
   # 2) FACEBOOK IFRAME ONEBOX (BEZ OEMBED)
   ##########################################
 
